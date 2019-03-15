@@ -1,0 +1,294 @@
+---
+title: "Econ_4403_A3"
+author: "Hanpeng Wang"
+date: "February 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Set up helper function for linear regression estimation
+
+```{r, include=TRUE}
+
+lm_calculation <- function(your_matrix, dependent_variables_col, independent_variables_col){
+  k <- length(your_matrix[1,]) - 2
+  n <- length(your_matrix[,1])
+  #1. calculate betahats
+  lm_betahats <- ( solve(t(your_matrix[,independent_variables_col]) %*% your_matrix[,independent_variables_col]) 
+                   %*% t(your_matrix[,independent_variables_col]) %*% your_matrix[,dependent_variables_col])
+  #2. calculate yhats
+  lm_yhats <- your_matrix[,independent_variables_col] %*% lm_betahats
+  #3. calculate uhats
+  lm_uhats <-  your_matrix[,dependent_variables_col] - lm_yhats
+  #3. calculate VCMs
+  vcm_uhats <- lm_uhats %*% t(lm_uhats)
+  var_uhat <- sum(t(lm_uhats) %*% lm_uhats) /  (n - k )
+  vcm_betahats <- var_uhat * solve(t(your_matrix[,independent_variables_col]) 
+                                   %*% your_matrix[,independent_variables_col])
+  #4 calculate statistics
+  mean_y <- mean(your_matrix[,dependent_variables_col])
+  Ess <- sum((lm_yhats-mean_y)**2)
+  Tss <- sum((your_matrix[,dependent_variables_col]-mean_y)**2)
+  Rss <- Tss - Ess
+  lm_rsqure <- Ess / Tss
+  t_stats <- rbind(names(your_matrix[,independent_variables_col]),
+                   lm_betahats / sqrt(diag(vcm_betahats)))
+  f_stat <- (Ess / k ) / (Rss / (n - k -1))
+    #return results 
+    return(list(betahat = lm_betahats, yhat = lm_yhats, uhat = lm_uhats, var = var_uhat, 
+                VCMuhat = vcm_uhats, VCMbetahat = vcm_betahats, r2 = lm_rsqure,
+                tstat = t_stats, fstat = f_stat))
+}
+
+```
+
+### Part A
+```{r, include=TRUE}
+#part A
+path_1 <- 'C:\\Users\\wangh\\OneDrive\\Desktop\\Andy.csv'
+#q1
+df_andy <- as.matrix(read.csv(path_1))
+intercept <- c(rep(1,length(df_andy[,1])))
+df_andy <- cbind(df_andy,intercept)
+df_andy <- df_andy[,c(1,4,2,3)]
+reg_andy1 <- lm_calculation(df_andy, c(1),c(2:4))
+print('betahats are')
+reg_andy1$betahat
+#q2
+print('price negative affects sale and advertisement is positive, y intercept is 118')
+#q3
+log_df_andy <- log(df_andy)
+log_df_andy[,2] <- intercept
+reg_logandy <- lm_calculation(log_df_andy,c(1), c(2:4))
+print('price and adv. elasticities are')
+reg_logandy$betahat[2:3]
+print(log(71) / log(5))
+print('the reason of difference is because we igonored other variable of adv.')
+
+
+#q6
+#a
+df2_andy <- cbind(df_andy,df_andy[,3]**2, df_andy[,4]**2)
+colnames(df2_andy) <- c('sales', 'intercept',
+                        'price','advert',
+                        'price_sq','advert_sq')
+reg_andy2 <- lm_calculation(df2_andy, c(1), c(2:6))
+print('old model and new model fstats are')
+reg_andy1$tstat
+reg_andy2$tstat
+print('I recommend the old model is better')
+#b
+df3_andy <- df2_andy[,-c(5)]
+reg_andy3 <- lm_calculation(df3_andy, c(1), c(2:5))
+print('price beta is stat significant')
+reg_andy3$tstat
+print("the third model's coefficients are more significant the second one, and F-test is better for third one as well")
+
+#q7
+
+#d(sales) / d(adv)
+optimal_adv <- -reg_andy3$betahat[3] / (2 * reg_andy3$betahat[4]) 
+cat('optimal adv spent should be',optimal_adv,'thousand dollars')
+
+#q8
+delta_sales <- -0.4 * reg_andy3$betahat[2] + 0.8 * reg_andy3$betahat[3] + 0.8**2 * reg_andy3$betahat[4]
+cat('price change is',delta_sales,'thousand dollars')
+
+#q9
+
+VCM_betahats3 <-  reg_andy3$VCMbetahat
+se_beta2_2beta4 <- sqrt(VCM_betahats3[2,2] + 4*VCM_betahats3[3,3] - 4*2*VCM_betahats3[3,2])
+t_test <- (reg_andy3$betahat[2] + 2*reg_andy3$betahat[3]) / se_beta2_2beta4 
+print(t_test > qt(0.02, df = 72, lower.tail = F))
+print('reject null hypothesis with 98% confidence')
+
+
+```
+
+###Part B
+#### Models Used in The Question 
+$$Y_{unrestricted,testscr} =\beta_1 + \beta_2X_{comp/stud} + \beta_3X_{expn/stud} + \beta_4X_{comp/str} + \beta_5X_{elpct} + \beta_6X_{meanpct} + \beta_7X_{calwpct} + \beta_8X_{avginc} + u$$
+$$Y_{lin-log,testscr} =\beta_1 + \beta_2\log(X_{comp/stud}) + \beta_3\log(X_{expn/stud}) + \beta_4log(X_{comp/str}) + \beta_5log(X_{elpct}) + \beta_6log(X_{meanpct}) + \beta_7log(X_{calwpct}) + \beta_8log(X_{avginc}) + u$$
+$$Y_{quodratic,testscr} =\beta_1 + \beta_2X_{comp/stud}^2 + \beta_3X_{expn/stud}^2 + \beta_4X_{comp/str}^2 + \beta_5X_{elpct}^2 + \beta_6X_{meanpct}^2 + \beta_7X_{calwpct}^2 + \beta_8X_{avginc}^2 + u$$
+```{r,include = TRUE}
+path_2 <- 'C:\\Users\\wangh\\OneDrive\\Desktop\\caschool.csv'
+df_score <- as.matrix(read.csv(path_2))
+varianble_names <- colnames(df_score)
+#q1
+
+chosen_variables <- c('testscr', 'comp_stu', 'expn_stu', 'str', 'el_pct', 
+                      'meal_pct','calw_pct','avginc') # these are variables I choose, they cover most of influential factors
+unrest_model <- df_score[,chosen_variables] 
+temp_matrix <- matrix(nrow = dim(unrest_model)[1], ncol = dim(unrest_model)[2]) 
+colnames(temp_matrix) <- chosen_variables
+for (i in 1:dim(unrest_model)[1]) {
+  for (j in 1:dim(unrest_model)[2]){temp_matrix[i,j]=as.numeric(unrest_model[i,j])}
+  
+} # convert str to float 
+unrest_model <- cbind(temp_matrix[,1], c(rep(1,length(unrest_model[,1]))),
+                      temp_matrix[,2:8]) # simple multiple linear regression 1st
+
+colnames(unrest_model) <- c('testscr', 'intercept', 'comp_stu', 'expn_stu', 'str', 'el_pct', 
+                            'meal_pct','calw_pct','avginc') 
+rest_model1 <- cbind(unrest_model[,1:2],  
+                     log(unrest_model[,3:9])) # lin-log regression 2nd
+rest_model1[!is.finite(rest_model1)] <- 0
+
+rest_model2 <- cbind(unrest_model[,1:2], 
+                     (unrest_model[,3:9])**2) # quadratic regression 3rd
+rest_model2[!is.finite(rest_model2)] <- 0
+
+print('the reason for given 3 models is that there might be some non-linear relationship to dependent variables, then quadratic and lin-log functions are good choices,
+      we will see whether non-linear assumption is true.')
+#q2
+reg_score1 <- lm_calculation(unrest_model,c(1),c(2:9))
+reg_score2 <- lm_calculation(rest_model1,c(1),c(2:9))
+reg_score1_lm <- summary(lm(unrest_model[,1]~unrest_model[,3:9]))
+reg_score2_lm <- summary(lm(rest_model1[,1]~rest_model1[,3:9]))
+cat(round(reg_score1$fstat, digits = 4) == round(reg_score1_lm$fstatistic[1], digits = 4), round(reg_score2$fstat, digits = 4) == round(reg_score2_lm$fstatistic[1], digits = 4))
+print('Results are the same')
+
+reg_score1$betahat
+reg_score2$betahat
+print('based on coefficients, we can say com_stu, expn_stud and avginc are positive effect, the rest of them is negative. However, lin-log model give negative coef for expn_stud,
+      there must be something wrong.')
+print('I would go for first model/unresctricted one, because both r2 and f-test are better')
+#q3
+stds <- apply(unrest_model,2,sd)
+means<- colMeans(unrest_model)
+nor_variables <- t(apply(unrest_model,1,function(row_){(row_ - means) / stds}))
+nor_variables <- nor_variables[,-2]
+reg_score_normalized <- lm_calculation(nor_variables,c(1),c(2:8))
+reg_score_normalized$betahat
+print('based on beta estimation, avginc has most positive influence and meal_pct most negative')
+
+#q4
+print('yes, R2 is high but some betas are not significant')
+#q5
+#a
+VCM_x <- t(nor_variables[,-1]) %*% nor_variables[,-1]
+covariance_x <- VCM_x / VCM_x[1,1] #df
+round(cov(nor_variables[,-1]), digits = 6) == round(covariance_x, digits = 6 )
+#b
+aux_reg <- cbind(c(rep(1,length(nor_variables[,1]))), nor_variables[,2:3])
+betahats_aux <- solve(t(aux_reg[,1:2]) %*% aux_reg[,1:2]
+            ) %*% t(aux_reg[,1:2]) %*% aux_reg[,3]
+r2_aux <- sum((aux_reg[,1:2] %*% betahats_aux - mean(aux_reg[,3]))**2) / 
+          sum((aux_reg[,3] - mean(aux_reg[,3]))**2)
+#c
+library(corpcor)
+partial_cor <- cor2pcor(VCM_x)
+simple_cor <- cov2cor(VCM_x)
+colnames(partial_cor) <- colnames(simple_cor)
+rownames(partial_cor) <- rownames(simple_cor)
+print('partial and simple correlations between x2 and x3 are
+      close and both are negative.') # x2 is student/teacher ratio and x3 is expense/student which makes sense that less teacher less expense
+
+#6
+library(car)
+vifs <- vif(lm(nor_variables[,1]~nor_variables[,2]+nor_variables[,3]+nor_variables[,4]+nor_variables[,5]+nor_variables[,6]+nor_variables[,7]+nor_variables[,8]))
+
+diag(reg_score_normalized$VCMbetahat) 
+print('yes mean_pct has the highest vif and variance')
+
+#7
+print('based on partial correlation & simple correlation, first we remove avginc
+      as it has higher vif and some correlations with other variables. Then,
+      remove expn_stu, then remove meal_pct whose vif is over 5. We keep 
+      el_pct and calw_pct') 
+
+final_model <- nor_variables[,c(1,2,4,5,7)]
+summary(lm(final_model[,1]~0+final_model[,2:5]))
+vif(lm(final_model[,1]~final_model[,2] + final_model[,3] + final_model[,4]
+        +final_model[,5]))
+print('this is much better and without lossing some relavant predictors')
+
+```
+
+###Part C
+```{r, include = TRUE}
+#q1
+x1 <- rep(1, 1000)
+x2 <- sample(c(0:100),1000, replace = T)
+x3 <- sample(0:1, 1000, replace = T)
+x4 <- floor(runif(1000, min=1, max=50))
+x5 <-rnorm(1000, 5.2, 1.25)
+beta <- c(12, -0.7, 34, -0.17, 5.4)
+uhats_c1 <- c()
+for (rho in c(-0.1,0.1,0.5,1) ) {
+  u <- rnorm(1000, 0, 1)
+  for(i in 1:999){
+      u[i+1] <- u[i] * rho + rnorm(1,0,1)
+  }
+  
+  xs <- cbind(x1,x2,x3,x4,x5)
+  y <- xs%*%beta + u
+  model <- cbind(y,xs,u)
+  
+  sample_1 <- model[sample(1:1000,size = 500,replace = T ),]
+  betahat_c1 <- solve(t(sample_1[,2:6]) %*% sample_1[,2:6]) %*% t(sample_1[,2:6]) %*% sample_1[,1] 
+  uhats_c1 <- cbind(uhats_c1,sample_1[,1] - sample_1[,2:6] %*% betahat_c1) 
+}
+plot(density(uhats_c1[,1]))
+lines(density(uhats_c1[,2]))
+lines(density(uhats_c1[,3]))
+lines(density(uhats_c1[,4])) # this is the flattened line and represents rho = 1
+#chose rho = 0.1 & 0.5 for question b
+mean(uhats_c1[,2])
+var(uhats_c1[,2])
+# rho = 0.5
+mean(uhats_c1[,3])
+var(uhats_c1[,3])
+
+
+  
+#MC sim.
+#1.
+n <- 500
+sample <- 5000
+fixed_xs <- model[sample(1:1000,n, replace = T),2:6]
+betahats_collector <- c()
+uhats_collector <- c()
+variance_collector <- c()
+for (i in 1:sample) {
+    u <- rnorm(500, 0, 1)
+    for(j in 1:(n-1)){
+      u[j+1] <- u[j] * 0.3  + rnorm(1,0,1)
+    }
+    y <- fixed_xs %*% beta + u
+    reg_mc <- lm_calculation(cbind(y,fixed_xs),c(1),c(2:6))
+    betahats_mc <- reg_mc$betahat
+    yhats_mc <- reg_mc$yhat
+    uhats_mc <- reg_mc$uhat
+    variance_mc <- reg_mc$var
+    betahats_collector <- rbind(betahats_collector, t(betahats_mc))
+    uhats_collector <- rbind(uhats_collector, t(uhats_mc))
+    variance_collector <- rbind(variance_collector, variance_mc)
+}
+
+betahats_means <- colMeans(betahats_collector)
+betahats_means - beta
+print('yes they are very close')
+#2. 
+vcm_uhats_mc <- matrix(0,n,n)
+for (i in 1:n) {
+    for (j in 1:n) {
+      vcm_uhats_mc[i,j] <- cov(uhats_collector[,i], uhats_collector[,j])
+    }
+}
+
+hist(diag(vcm_uhats_mc[-1,]), breaks = 150)
+print('no it does not look like so, E(UtUt-1) seems like close to rho')
+#3
+vcm_beta_AR1 <- solve(t(fixed_xs) %*% fixed_xs) %*% t(fixed_xs) %*% vcm_uhats_mc %*% fixed_xs %*% solve(t(fixed_xs) %*% fixed_xs) 
+vcm_beta_AR1
+#4
+sigma_sqr <- (t(uhats_collector[sample,]) %*% uhats_collector[sample,]) / (500 - 5)
+VCM_betahat_OLS <- sum(sigma_sqr) * solve(t(fixed_xs) %*% fixed_xs) 
+print('yes exactly, their values are very large')
+
+```
+
