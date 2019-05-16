@@ -1,4 +1,4 @@
-ECONOMETRICS
+ECONOMETRICS /
 ECON 4403 - Winter 2019
 Assignment 4
 It’s due on Sunday, by midnight April 7th (only by email). You can submit it individually
