@@ -1,2 +1,2 @@
 # AssignmentsRcode
-This is my assignments
+These're assignments for my Econometrics and Investment classes. 
