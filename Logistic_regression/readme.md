@@ -1,1 +1,1 @@
-![image](C:/Users/wangh/OneDrive/Desktop/myapp/A4-1.jpg)
+![image](somepic/A4-1.jpg)
