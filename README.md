@@ -1,6 +1,8 @@
 # Assignment Projects 
 
-##These're assignments for my Econometrics and Investment classes. 
+## These are course projects for my Econometrics and Investment classes. 
 
-For Investment one, it includes portfolio optimazation and some models like single index model
+### for Econometrics class, it covers many aspects such as gauss-markov theorem and generalized least square model etc. 
+
+### Investment one, they have more focuses on portfolio optimization and classical financial models with real world assets' data
 
